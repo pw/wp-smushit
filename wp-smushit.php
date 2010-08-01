@@ -34,7 +34,7 @@ define('WP_SMUSHIT_PLUGIN_DIR', dirname(plugin_basename(__FILE__)));
  */
 register_activation_hook(__FILE__,'wp_smushit_install');
 
-add_filter('wp_generate_attachment_metadata', 'wp_smushit_resize_from_meta_data');
+add_filter('wp_generate_attachment_metadata', 'wp_smushit_resize_from_meta_data', 10, 2);
 add_filter('manage_media_columns', 'wp_smushit_columns');
 add_action('manage_media_custom_column', 'wp_smushit_custom_column', 10, 2);
 add_action('admin_init', 'wp_smushit_admin_init');
@@ -85,9 +85,10 @@ function wp_smushit_manual() {
 
 	$attachment_ID = intval($_GET['attachment_ID']);
 
-	$original_meta = wp_get_attachment_metadata( $attachment_ID );
+	$original_meta = wp_get_attachment_metadata( $attachment_ID);
 
-	$new_meta = wp_smushit_resize_from_meta_data( $original_meta );
+
+	$new_meta = wp_smushit_resize_from_meta_data( $original_meta, $attachment_ID );
 	wp_update_attachment_metadata( $attachment_ID, $new_meta );
 
 	$sendback = wp_get_referer();
@@ -200,7 +201,13 @@ function wp_smushit($file) {
  *
  * Called after `wp_generate_attachment_metadata` is completed.
  */
-function wp_smushit_resize_from_meta_data($meta) {
+function wp_smushit_resize_from_meta_data($meta, $attachment_ID) {
+
+  	if ( empty($meta['file']) ) {
+	  $url = wp_get_attachment_url($attachment_ID);
+	  $path = preg_replace('/.*\/wp-content\/uploads\//', '', $url);
+	  $meta['file'] = $path;
+	}
 
 	$file_path = $meta['file'];
 	$store_absolute_path = true;
@@ -215,7 +222,6 @@ function wp_smushit_resize_from_meta_data($meta) {
 	
 
 	list($file, $msg) = wp_smushit($file_path);
-
 	$meta['file'] = $file;
 	$meta['wp_smushit'] = $msg;
 
